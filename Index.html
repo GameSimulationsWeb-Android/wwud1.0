@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WWUD | Playroom Edition V2.1</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Quicksand:wght@400;700&display=swap');
+        :root { --bg: #FFF5F7; --card: #FFFFFF; --obsidian: #2D3436; --pink: #FF85A2; --mint: #B2F7EF; --gold: #FFD93D; --danger: #FF6B6B; --success: #6BCB77; --border-w: 4px; }
+        body { font-family: 'Quicksand', sans-serif; background: var(--bg); color: var(--obsidian); margin: 0; padding: 0; overflow: hidden; }
+        h1, h2, h3, h4, .btn-main { font-family: 'Fredoka', sans-serif; text-transform: uppercase; }
+        .panel, .modal, .pillar-card, .kpi-box, .terminal { background: var(--card); border: var(--border-w) solid var(--obsidian); border-radius: 30px; box-shadow: 6px 6px 0px var(--obsidian); }
+        .layout-master { display: grid; grid-template-columns: 320px 1fr 320px; height: calc(100vh - 70px); gap: 20px; padding: 20px; box-sizing: border-box; }
+        header { background: var(--pink); height: 70px; display: flex; justify-content: space-between; align-items: center; padding: 0 40px; border-bottom: var(--border-w) solid var(--obsidian); color: white; }
+        .main-content { display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .pillar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+        .pillar-card { padding: 15px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .pillar-card:hover { transform: scale(1.03); background: var(--mint); }
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .kpi-box { padding: 15px; text-align: center; }
+        .terminal { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        .btn-main { background: var(--pink); color: white; border: var(--border-w) solid var(--obsidian); padding: 12px 20px; border-radius: 50px; cursor: pointer; font-size: 1rem; box-shadow: 0 5px 0 var(--obsidian); transition: 0.1s; width: 100%; }
+        .btn-main:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--obsidian); }
+        input { width: 100%; padding: 8px; border-radius: 15px; border: 3px solid var(--obsidian); margin-bottom: 8px; text-align: center; font-family: inherit; }
+        .overlay { position: fixed; inset: 0; background: rgba(45, 52, 54, 0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal { width: 500px; padding: 30px; max-height: 85vh; overflow-y: auto; }
+        .hidden { display: none !important; }
+        .ledger-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 15px; }
+        .ledger-table th, .ledger-table td { border: 2px solid var(--obsidian); padding: 8px; text-align: left; }
+        .ledger-table th { background: var(--mint); }
+        .option-btn { padding: 12px; border: 3px solid var(--obsidian); border-radius: 15px; margin: 8px 0; cursor: pointer; background: white; }
+        .option-btn:hover { background: var(--mint); }
+        .target-tag { background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 0.75rem; white-space: nowrap; }
+	<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FF85A2"> <link rel="icon" sizes="192x192" href="https://cdn-icons-png.flaticon.com/512/808/808439.png">
+    </style>
+</head>
+<body>
+
+<div id="setup-overlay" class="overlay">
+    <div class="modal" id="setup-content">
+        <h2>Set Your Tenure ⏳</h2>
+        <div class="option-btn" onclick="setTenure(1)">1 Year (Sprint)</div>
+        <div class="option-btn" onclick="setTenure(3)">3 Years (Medium)</div>
+        <div class="option-btn" onclick="setTenure(5)">5 Years (Long Term)</div>
+    </div>
+</div>
+
+<div id="ledger-overlay" class="overlay hidden">
+    <div class="modal" style="width: 90vw; max-width: 1000px;">
+        <div style="display:flex; justify-content: space-between; align-items: center;">
+            <h2>Financial Ledger 📖</h2>
+            <button class="btn-main" style="width: 100px;" onclick="toggleLedger()">CLOSE</button>
+        </div>
+        <div id="ledger-container"></div>
+    </div>
+</div>
+
+<div id="end-overlay" class="overlay hidden">
+    <div class="modal" style="text-align: center;">
+        <h1 id="end-title">Game Over!</h1>
+        <p id="end-summary" style="line-height: 1.6;"></p>
+        <button class="btn-main" onclick="location.reload()">RESTART</button>
+    </div>
+</div>
+
+<div id="loan-modal" class="overlay hidden"><div class="modal"><h2 style="color:var(--danger)">Bank Loan!</h2><div id="loan-list"></div></div></div>
+<div id="pillar-modal" class="overlay hidden"><div class="modal" id="p-content"></div></div>
+
+<header>
+    <div style="font-size: 1.5rem; font-family: 'Fredoka';">WWUD PLAYROOM</div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <div class="target-tag">💰 Target Sav: <span id="ui-target-sav">₹0</span></div>
+        <div class="target-tag">❤️ Target Health: <span id="ui-target-health">70⚡</span></div>
+        <button class="btn-main" style="background:var(--gold); color:var(--obsidian); font-size: 0.8rem; width: auto;" onclick="toggleLedger()">LEDGER</button>
+        <div id="ui-time" style="font-weight: bold; width: 80px;">Y1 | M1</div>
+    </div>
+</header>
+
+<div class="layout-master">
+    <aside class="panel">
+        <h3>Happiness Radar</h3>
+        <canvas id="spiderChart"></canvas>
+    </aside>
+
+    <main class="main-content">
+        <div class="pillar-grid">
+            <div class="pillar-card" onclick="openPillar('work')"><div>WORK</div><b id="str-work">-</b></div>
+            <div class="pillar-card" onclick="openPillar('self')"><div>SELF</div><b id="str-self">-</b></div>
+            <div class="pillar-card" onclick="openPillar('fam')"><div>FAMILY</div><b id="str-fam">-</b></div>
+            <div class="pillar-card" onclick="openPillar('soc')"><div>SOCIAL</div><b id="str-soc">-</b></div>
+            <div class="pillar-card" onclick="openPillar('fees')"><div>FEES</div><b id="str-fees">-</b></div>
+        </div>
+        <div class="kpi-row">
+            <div class="kpi-box"><label>CASH</label><br><b>₹<span id="ui-cash">0</span></b></div>
+            <div class="kpi-box"><label>ENERGY</label><br><b>⚡<span id="ui-energy">0</span></b></div>
+            <div class="kpi-box"><label>INVESTED</label><br><b>₹<span id="ui-savings">0</span></b></div>
+            <div class="kpi-box"><label>DEBT</label><br><b style="color:var(--danger)">₹<span id="ui-debt">0</span></b></div>
+        </div>
+        <div class="terminal" id="narrative-box">
+            <h3>Ready?</h3>
+            <button class="btn-main" onclick="generateDecision()">GET DECISION</button>
+        </div>
+    </main>
+
+    <aside class="panel">
+        <h3>Investment Deck</h3>
+        <label>Monthly SIP (₹)</label><input type="number" id="in-sip" placeholder="₹0">
+        <label>Monthly Gold (₹)</label><input type="number" id="in-gold" placeholder="₹0">
+        <div style="font-size: 0.8rem; margin: 10px 0; padding: 10px; background: #eee; border-radius: 10px;">
+            <b>🏠 Home:</b> <span id="ui-apt-name">-</span><br>
+            <b>💸 Rent:</b> ₹<span id="ui-rent">0</span>
+        </div>
+        <button class="btn-main" id="repay-btn" style="background:var(--success)" onclick="repayDebt()">Repay ₹50,000</button>
+    </aside>
+</div>
+
+<script>
+const GameState = {
+    m: 1, y: 1, cash: 100000, energy: 100, debt: 0,
+    jobBase: 0, tenure: 1, rent: 0, aptHealth: 0,
+    assets: { sip: 0, gold: 0 },
+    strat: { work: 'mid', self: 'mid', fam: 'mid', soc: 'mid', fees: 'mid' },
+    history: [], chart: null, pendingEvent: null
+};
+
+const Config = {
+    rates: { sip: 0.03, gold: 0.05 }, // Quarterly rates (12%/4 and 20%/4)
+    apartments: [
+        { t: "Shared Pod", r: 10000, h: -10, d: "Rent ₹10k | -10⚡ Health" },
+        { t: "Suburb Flat", r: 25000, h: -5, d: "Rent ₹25k | -5⚡ Health" },
+        { t: "City Studio", r: 45000, h: 0, d: "Rent ₹45k | 0⚡ Health" },
+        { t: "Modern Condo", r: 75000, h: 5, d: "Rent ₹75k | +5⚡ Health" },
+        { t: "Luxury Villa", r: 150000, h: 15, d: "Rent ₹150k | +15⚡ Health" }
+    ],
+    pillars: {
+        work: {
+            low: { t: "Chill", mul: 0.6, n: 10, d: "60% Salary | +10⚡" },
+            mid: { t: "Standard", mul: 1.0, n: -5, d: "100% Salary | -5⚡" },
+            high: { t: "Hustle", mul: 1.8, n: -20, d: "180% Salary | -20⚡" }
+        },
+        self: { low: { t: "Basic", c: 5000, n: 5 }, mid: { t: "Comfy", c: 20000, n: 10 }, high: { t: "Lux", c: 60000, n: 25 } },
+        fam: { low: { t: "Minimal", c: 0, n: -5 }, mid: { t: "Care", c: 30000, n: 5 }, high: { t: "Support+", c: 85000, n: 15 } },
+        soc: { low: { t: "Intro", c: 0, n: 5 }, mid: { t: "Social", c: 15000, n: 0 }, high: { t: "Party", c: 50000, n: -10 } },
+        fees: { low: { t: "Fixed", c: 5000 }, mid: { t: "Manage", c: 15000 }, high: { t: "Premium", c: 40000 } }
+    }
+};
+
+const DecisionLib = [
+    { t: "Bull Market", d: "Stocks are soaring! Portfolio gains 10%?", e: { sipMul: 1.1, goldMul: 1.05, c: 0, n: 0 }, auto: true },
+    { t: "Market Crash", d: "Economy dips! Portfolio drops 15%?", e: { sipMul: 0.85, goldMul: 0.9, c: 0, n: 0 }, auto: true },
+    { t: "Side Project", d: "Freelance gig for ₹40k? (-15⚡)", e: { c: 40000, n: -15 }, auto: false },
+    { t: "Gym Membership", d: "Join elite gym for ₹15k? (+10⚡)", e: { c: -15000, n: 10 }, auto: false },
+    { t: "Health Scare", d: "Sudden medical bill! (-₹30k, -20⚡)", e: { c: -30000, n: -20 }, auto: true }
+];
+
+function setTenure(yrs) { GameState.tenure = yrs; showStep2(); }
+function showStep2() {
+    let h = `<h2>Career Base</h2>`;
+    [{n:"Standard",v:60000},{n:"Senior",v:110000},{n:"Executive",v:180000}].forEach(o => {
+        h += `<div class="option-btn" onclick="setCareer(${o.v})">${o.n}: ₹${o.v.toLocaleString()}</div>`;
+    });
+    document.getElementById('setup-content').innerHTML = h;
+}
+function setCareer(v) { GameState.jobBase = v; showStep3(); }
+function showStep3() {
+    let h = `<h2>Choose Home</h2>`;
+    Config.apartments.forEach((a, i) => { h += `<div class="option-btn" onclick="bootSim(${i})"><b>${a.t}</b><br><small>${a.d}</small></div>`; });
+    document.getElementById('setup-content').innerHTML = h;
+}
+
+function bootSim(aptIdx) {
+    const apt = Config.apartments[aptIdx];
+    GameState.rent = apt.r; GameState.aptHealth = apt.h;
+    document.getElementById('ui-apt-name').innerText = apt.t;
+    document.getElementById('ui-rent').innerText = apt.r.toLocaleString();
+    document.getElementById('ui-target-sav').innerText = "₹" + (GameState.jobBase * 12 * GameState.tenure * 0.6).toLocaleString();
+    document.getElementById('setup-overlay').classList.add('hidden');
+    initChart(); render();
+}
+
+function generateDecision() {
+    const ev = DecisionLib[Math.floor(Math.random() * DecisionLib.length)];
+    GameState.pendingEvent = ev;
+    const box = document.getElementById('narrative-box');
+    box.innerHTML = `<h2>${ev.t}</h2><p>${ev.d}</p><div style="display:flex; gap:10px; width:100%"><button class="btn-main" style="background:var(--success)" onclick="applyDecision(true)">YES / OK</button>${!ev.auto ? `<button class="btn-main" style="background:var(--danger)" onclick="applyDecision(false)">NO</button>` : ''}</div>`;
+}
+
+function applyDecision(accepted) {
+    let res = "Skip";
+    if(accepted) {
+        const e = GameState.pendingEvent.e;
+        GameState.cash += (e.c || 0);
+        GameState.energy += (e.n || 0);
+        if(e.sipMul) { GameState.assets.sip *= e.sipMul; GameState.assets.gold *= e.goldMul; }
+        res = GameState.pendingEvent.t;
+    }
+    processMonth(res);
+}
+
+function processMonth(lastDec) {
+    const workS = Config.pillars.work[GameState.strat.work];
+    const selfS = Config.pillars.self[GameState.strat.self];
+    const famS = Config.pillars.fam[GameState.strat.fam];
+    const socS = Config.pillars.soc[GameState.strat.soc];
+    const feeS = Config.pillars.fees[GameState.strat.fees];
+
+    let monthlyIncome = GameState.jobBase * workS.mul;
+    let monthlyExp = GameState.rent + selfS.c + famS.c + socS.c + feeS.c;
+    
+    GameState.cash += (monthlyIncome - monthlyExp);
+    GameState.energy = Math.min(100, Math.max(0, GameState.energy + workS.n + selfS.n + famS.n + socS.n + GameState.aptHealth));
+
+    // Invest
+    const sipVal = Math.max(0, parseInt(document.getElementById('in-sip').value) || 0);
+    const goldVal = Math.max(0, parseInt(document.getElementById('in-gold').value) || 0);
+    if(GameState.cash >= (sipVal + goldVal)) {
+        GameState.assets.sip += sipVal; GameState.assets.gold += goldVal;
+        GameState.cash -= (sipVal + goldVal);
+    }
+
+    // Quarterly Interest (Growth)
+    let growthMsg = "";
+    if(GameState.m % 3 === 0) {
+        GameState.assets.sip *= (1 + Config.rates.sip);
+        GameState.assets.gold *= (1 + Config.rates.gold);
+        growthMsg = " [Q-Growth Applied]";
+    }
+
+    GameState.history.push({
+        y: GameState.y, m: GameState.m, income: monthlyIncome, expense: monthlyExp,
+        cashAfter: GameState.cash, energy: GameState.energy, decision: lastDec + growthMsg,
+        assets: GameState.assets.sip + GameState.assets.gold
+    });
+
+    if(GameState.m === 12) { 
+        if(GameState.y === GameState.tenure) return endGame();
+        GameState.m = 1; GameState.y++; 
+    } else { GameState.m++; }
+    
+    if(GameState.cash < 0) triggerLoanModal();
+    render();
+    document.getElementById('narrative-box').innerHTML = `<h3>Month Done</h3><button class="btn-main" onclick="generateDecision()">NEXT MONTH</button>`;
+}
+
+function endGame() {
+    document.getElementById('end-overlay').classList.remove('hidden');
+    const totalSav = GameState.assets.sip + GameState.assets.gold + GameState.cash;
+    const targetSav = GameState.jobBase * 12 * GameState.tenure * 0.6;
+    const success = totalSav >= targetSav && GameState.energy >= 70;
+    
+    document.getElementById('end-title').innerText = success ? "Success! 🏆" : "Try Harder! 📉";
+    document.getElementById('end-summary').innerHTML = `
+        <b>Final Savings:</b> ₹${Math.floor(totalSav).toLocaleString()} (Target: ₹${targetSav.toLocaleString()})<br>
+        <b>Final Health:</b> ${GameState.energy}⚡ (Target: 70⚡)<br>
+        ${!success ? "Tip: Manage your work-life balance and investments better next time!" : "You've secured your future!"}
+    `;
+}
+
+function toggleLedger() {
+    const overlay = document.getElementById('ledger-overlay');
+    overlay.classList.toggle('hidden');
+    if(!overlay.classList.contains('hidden')) {
+        let h = `<table class="ledger-table"><tr><th>Date</th><th>Decision/Event</th><th>Income</th><th>Expense</th><th>Assets</th><th>Cash</th><th>Energy</th></tr>`;
+        GameState.history.slice().reverse().forEach(r => {
+            h += `<tr><td>Y${r.y}-M${r.m}</td><td>${r.decision}</td><td>₹${r.income.toLocaleString()}</td><td>₹${r.expense.toLocaleString()}</td><td>₹${Math.floor(r.assets).toLocaleString()}</td><td>₹${Math.floor(r.cashAfter).toLocaleString()}</td><td>${r.energy}⚡</td></tr>`;
+        });
+        document.getElementById('ledger-container').innerHTML = h + `</table>`;
+    }
+}
+
+function triggerLoanModal() {
+    let h = "";
+    [{a:100000,r:1.2},{a:500000,r:1.1}].forEach(l => h += `<div class="option-btn" onclick="takeLoan(${l.a}, ${l.r})">Borrow ₹${l.a} (Pay ₹${l.a*l.r})</div>`);
+    document.getElementById('loan-list').innerHTML = h;
+    document.getElementById('loan-modal').classList.remove('hidden');
+}
+function takeLoan(a, r) { GameState.debt += (a*r); GameState.cash += a; document.getElementById('loan-modal').classList.add('hidden'); render(); }
+function repayDebt() { if(GameState.cash >= 50000 && GameState.debt > 0) { GameState.cash -= 50000; GameState.debt -= 50000; render(); } }
+
+function render() {
+    document.getElementById('ui-cash').innerText = Math.floor(GameState.cash).toLocaleString();
+    document.getElementById('ui-energy').innerText = Math.floor(GameState.energy);
+    document.getElementById('ui-savings').innerText = Math.floor(GameState.assets.sip + GameState.assets.gold).toLocaleString();
+    document.getElementById('ui-debt').innerText = Math.floor(GameState.debt).toLocaleString();
+    document.getElementById('ui-time').innerText = `Y${GameState.y} | M${GameState.m}`;
+    for(let p in GameState.strat) document.getElementById(`str-${p}`).innerText = Config.pillars[p][GameState.strat[p]].t;
+    if(GameState.chart) { GameState.chart.data.datasets[0].data = [GameState.energy, (GameState.cash/5000), (GameState.assets.sip/10000), 80, 70]; GameState.chart.update(); }
+}
+
+function openPillar(p) {
+    let h = `<h2>Adjust ${p}</h2>`;
+    for(let k in Config.pillars[p]) h += `<div class="option-btn" onclick="setStrat('${p}','${k}')"><b>${Config.pillars[p][k].t}</b><br><small>${Config.pillars[p][k].d || ''}</small></div>`;
+    document.getElementById('p-content').innerHTML = h; document.getElementById('pillar-modal').classList.remove('hidden');
+}
+function setStrat(p, v) { GameState.strat[p] = v; document.getElementById('pillar-modal').classList.add('hidden'); render(); }
+function initChart() { GameState.chart = new Chart(document.getElementById('spiderChart'), { type: 'radar', data: { labels: ['Energy', 'Cash', 'Assets', 'Fam', 'Soc'], datasets: [{ data: [100, 50, 20, 80, 70], backgroundColor: 'rgba(178, 247, 239, 0.5)', borderColor: '#2D3436', borderWidth: 3 }] }, options: { scales: { r: { min: 0, max: 100, ticks: { display: false } } }, plugins: { legend: { display: false } } } }); }
+</script>
+</body>
+</html>
